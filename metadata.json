@@ -1,0 +1,6 @@
+{
+  "name": "BORONGIN.COM - Toko Online & Marketplace Indonesia",
+  "description": "BORONGIN.COM: Belanja Mudah, Harga Bersahabat. Platform e-commerce modern dengan katalog produk lengkap, flash sale, WooCommerce & payment gateway simulation, live tracking, dan WhatsApp chat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

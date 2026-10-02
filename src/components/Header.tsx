@@ -6,7 +6,7 @@ import {
   User, 
   Menu, 
   X, 
-  Layers, 
+  CreditCard, 
   ShieldCheck, 
   Package, 
   Sparkles, 
@@ -33,8 +33,10 @@ export const Header: React.FC = () => {
     setCategoryFilter,
     setSelectedProductId,
     setIsAuthModalOpen,
-    setIsBlueprintModalOpen,
-    user
+    user,
+    authRole,
+    customerLogout,
+    adminLogout
   } = useShop();
 
   const [isScrolled, setIsScrolled] = useState(false);
@@ -115,22 +117,26 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 text-xs font-semibold">
             <button 
-              onClick={() => setIsBlueprintModalOpen(true)}
-              className="bg-emerald-700/80 hover:bg-emerald-600 text-emerald-50 px-2.5 py-0.5 rounded text-xs flex items-center gap-1.5 transition-colors border border-emerald-600"
+              onClick={() => setCurrentView('tracking')}
+              className="text-emerald-100 hover:text-white flex items-center gap-1.5 transition-colors"
             >
-              <Layers className="w-3.5 h-3.5 text-amber-300" />
-              <span>WP & WooCommerce Blueprint</span>
+              <Package className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Lacak Pesanan</span>
             </button>
 
-            <button 
-              onClick={() => setCurrentView('admin')}
-              className="text-emerald-100 hover:text-white flex items-center gap-1 transition-colors"
+            <span className="text-emerald-600">|</span>
+
+            <a 
+              href="https://wa.me/6287722631751" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-emerald-100 hover:text-white flex items-center gap-1.5 transition-colors"
             >
-              <Package className="w-3.5 h-3.5" />
-              <span>Admin & Stok</span>
-            </button>
+              <Phone className="w-3.5 h-3.5 text-emerald-300" />
+              <span>WhatsApp: 0877-2263-1751</span>
+            </a>
           </div>
         </div>
       </div>
@@ -268,74 +274,107 @@ export const Header: React.FC = () => {
               )}
             </button>
 
-            {/* Customer Account Button / Menu */}
-            <div className="relative">
-              <button
-                onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
-                className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-2 text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded-xl transition-colors border border-transparent hover:border-slate-200"
-              >
-                <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
-                  {user.name.charAt(0)}
-                </div>
-                <div className="hidden lg:block text-left text-xs">
-                  <span className="text-slate-400 block text-[10px]">Halo,</span>
-                  <span className="font-semibold text-slate-800 line-clamp-1">{user.name.split(' ')[0]}</span>
-                </div>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden lg:block" />
-              </button>
-
-              {/* Account Dropdown */}
-              {isAccountDropdownOpen && (
-                <div 
-                  className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50"
-                  onMouseLeave={() => setIsAccountDropdownOpen(false)}
+            {/* Customer / Admin / Guest Account Area */}
+            {authRole === 'GUEST' || !user ? (
+              <div className="hidden sm:flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentView('login')}
+                  className="px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded-xl transition-colors"
                 >
-                  <div className="px-4 py-2 border-b border-slate-100">
-                    <p className="text-xs text-slate-500">Masuk sebagai</p>
-                    <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        Member {user.memberTier}
-                      </span>
-                      <span className="text-xs text-emerald-600 font-semibold">{user.points} Poin</span>
-                    </div>
+                  Login
+                </button>
+                <button
+                  onClick={() => setCurrentView('register')}
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-xl shadow-xs transition-colors"
+                >
+                  Daftar
+                </button>
+              </div>
+            ) : authRole === 'ADMIN' ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentView('admin')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-300 hover:bg-emerald-200 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                  <span className="hidden sm:inline">Admin Dashboard</span>
+                </button>
+                <button
+                  onClick={adminLogout}
+                  className="text-xs text-rose-600 hover:underline font-bold px-1"
+                >
+                  Keluar
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <button
+                  onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-2 text-slate-700 hover:text-emerald-700 hover:bg-slate-100 rounded-xl transition-colors border border-transparent hover:border-slate-200"
+                >
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                    {user.name.charAt(0)}
                   </div>
+                  <div className="hidden lg:block text-left text-xs">
+                    <span className="text-slate-400 block text-[10px]">Halo,</span>
+                    <span className="font-semibold text-slate-800 line-clamp-1">{user.name.split(' ')[0]}</span>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden lg:block" />
+                </button>
 
-                  <button
-                    onClick={() => { setCurrentView('account'); setIsAccountDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2"
+                {/* Account Dropdown */}
+                {isAccountDropdownOpen && (
+                  <div 
+                    className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-50"
+                    onMouseLeave={() => setIsAccountDropdownOpen(false)}
                   >
-                    <User className="w-4 h-4 text-slate-400" />
-                    <span>Dashboard Akun & Pesanan</span>
-                  </button>
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs text-slate-500">Masuk sebagai</p>
+                      <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          Member {user.memberTier}
+                        </span>
+                        <span className="text-xs text-emerald-600 font-semibold">{user.points} Poin</span>
+                      </div>
+                    </div>
 
-                  <button
-                    onClick={() => { setCurrentView('tracking'); setIsAccountDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2"
-                  >
-                    <Package className="w-4 h-4 text-slate-400" />
-                    <span>Lacak Pengiriman</span>
-                  </button>
+                    <button
+                      onClick={() => { setCurrentView('account'); setIsAccountDropdownOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2"
+                    >
+                      <User className="w-4 h-4 text-slate-400" />
+                      <span>Dashboard Akun</span>
+                    </button>
 
-                  <button
-                    onClick={() => { setCurrentView('admin'); setIsAccountDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2"
-                  >
-                    <SlidersHorizontal className="w-4 h-4 text-slate-400" />
-                    <span>Kelola Stok & Admin</span>
-                  </button>
+                    <button
+                      onClick={() => { setCurrentView('account'); setIsAccountDropdownOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2"
+                    >
+                      <Package className="w-4 h-4 text-slate-400" />
+                      <span>Pesanan Saya</span>
+                    </button>
 
-                  <div className="border-t border-slate-100 my-1"></div>
+                    <button
+                      onClick={() => { setCurrentView('tracking'); setIsAccountDropdownOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2"
+                    >
+                      <Package className="w-4 h-4 text-slate-400" />
+                      <span>Lacak Pengiriman</span>
+                    </button>
 
-                  <button
-                    onClick={() => { setIsAuthModalOpen(true); setIsAccountDropdownOpen(false); }}
-                    className="w-full text-left px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                  >
-                    <span>Ganti Akun / Keluar</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                    <div className="border-t border-slate-100 my-1"></div>
+
+                    <button
+                      onClick={() => { customerLogout(); setIsAccountDropdownOpen(false); }}
+                      className="w-full text-left px-4 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                    >
+                      <span>Keluar (Logout)</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Mobile Hamburger Menu Button */}
             <button
@@ -467,24 +506,46 @@ export const Header: React.FC = () => {
           <div className="bg-white h-full max-w-[310px] w-full p-4 overflow-y-auto flex flex-col justify-between shadow-2xl safe-area-pb">
             <div className="space-y-4">
               
-              {/* Drawer Top Header with User info & Close */}
+              {/* Drawer Top Header with Role Check */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-sm shadow-xs">
-                    {user.name.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[10px] font-black uppercase px-2 py-0.2 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
-                        {user.memberTier}
-                      </span>
-                      <span className="text-[11px] text-emerald-600 font-bold">
-                        {user.points} Poin
-                      </span>
+                {authRole === 'GUEST' || !user ? (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-500 font-black flex items-center justify-center text-sm shadow-xs">
+                      ?
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Halo, Pengunjung</p>
+                      <p className="text-[10px] text-slate-500">Belanja Mudah, Harga Bersahabat</p>
                     </div>
                   </div>
-                </div>
+                ) : authRole === 'ADMIN' ? (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-sm shadow-xs">
+                      A
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Administrator</p>
+                      <p className="text-[10px] text-emerald-700 font-bold">@boronginadm</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-800 font-black flex items-center justify-center text-sm shadow-xs">
+                      {user.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.2 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                          {user.memberTier}
+                        </span>
+                        <span className="text-[11px] text-emerald-600 font-bold">
+                          {user.points} Poin
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={() => setMobileMenuOpen(false)}
@@ -554,38 +615,84 @@ export const Header: React.FC = () => {
 
             {/* Bottom Actions in Drawer */}
             <div className="pt-4 border-t border-slate-100 space-y-2 mt-4">
-              <button
-                onClick={() => {
-                  setCurrentView('account');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
-              >
-                <User className="w-4 h-4 text-slate-600" />
-                <span>Buka Dashboard Akun</span>
-              </button>
+              {authRole === 'GUEST' || !user ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setCurrentView('login');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px] shadow-sm"
+                  >
+                    <span>Masuk ke Akun (Login)</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('register');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
+                  >
+                    <span>Daftar Akun Baru</span>
+                  </button>
+                </>
+              ) : authRole === 'ADMIN' ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setCurrentView('admin');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Buka Admin Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      adminLogout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
+                  >
+                    <span>Keluar (Logout Admin)</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setCurrentView('account');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
+                  >
+                    <User className="w-4 h-4 text-slate-600" />
+                    <span>Dashboard Akun & Pesanan</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setIsBlueprintModalOpen(true);
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
-              >
-                <Layers className="w-4 h-4 text-emerald-600" />
-                <span>WooCommerce Architecture</span>
-              </button>
+                  <button
+                    onClick={() => {
+                      setCurrentView('tracking');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px]"
+                  >
+                    <Package className="w-4 h-4 text-emerald-600" />
+                    <span>Lacak Pengiriman</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setCurrentView('admin');
-                  setMobileMenuOpen(false);
-                }}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors min-h-[44px] shadow-sm"
-              >
-                <Package className="w-4 h-4" />
-                <span>Kelola Stok & Admin</span>
-              </button>
+                  <button
+                    onClick={() => {
+                      customerLogout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full py-2 text-rose-600 hover:bg-rose-50 rounded-xl text-xs font-bold transition-colors"
+                  >
+                    <span>Keluar dari Akun</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

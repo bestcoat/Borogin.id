@@ -14,7 +14,7 @@ import {
 import { useShop } from '../context/ShopContext';
 
 export const Footer: React.FC = () => {
-  const { setCurrentView, setCategoryFilter, setIsBlueprintModalOpen } = useShop();
+  const { setCurrentView, setCategoryFilter } = useShop();
 
   return (
     <footer className="bg-slate-900 text-slate-300 pt-16 pb-12 border-t border-slate-800">
@@ -164,9 +164,9 @@ export const Footer: React.FC = () => {
                 </button>
               </li>
               <li>
-                <button onClick={() => setIsBlueprintModalOpen(true)} className="text-emerald-400 font-semibold hover:underline flex items-center gap-1">
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Arsitektur WP WooCommerce</span>
+                <button onClick={() => setCurrentView('tracking')} className="text-emerald-400 font-semibold hover:underline flex items-center gap-1">
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Konfirmasi Pembayaran</span>
                 </button>
               </li>
             </ul>
@@ -257,7 +257,16 @@ export const Footer: React.FC = () => {
 
         {/* Bottom Bar: Copyright & Socials */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© 2026 BORONGIN.COM. All Rights Reserved. Terdaftar di Kementerian Kominfo RI.</p>
+          <p>
+            © 2026 BORONGIN.COM. All Rights Reserved. Terdaftar di Kementerian Kominfo RI. ·{' '}
+            <button 
+              onClick={() => setCurrentView('admin-login')} 
+              className="hover:text-emerald-400 transition-colors text-slate-500 hover:underline"
+              title="Khusus Staf & Administrator Toko"
+            >
+              Portal Administrator
+            </button>
+          </p>
           
           <div className="flex items-center gap-5">
             <span className="text-slate-400 font-medium">Ikuti Kami:</span>

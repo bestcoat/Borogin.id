@@ -7,21 +7,22 @@ export const WhatsAppFloating: React.FC = () => {
     isWhatsAppModalOpen, 
     setIsWhatsAppModalOpen, 
     whatsAppInitialMessage, 
-    setWhatsAppInitialMessage 
+    setWhatsAppInitialMessage,
+    storeSettings
   } = useShop();
 
   const [message, setMessage] = useState(whatsAppInitialMessage);
 
   const predefinedTemplates = [
-    'Halo Borongin, saya ingin bertanya mengenai produk.',
+    'Halo Borongin, saya ingin bertanya mengenai ketersediaan produk.',
     'Halo CS Borongin, mohon info promo gratis ongkir hari ini.',
-    'Halo, saya mau konfirmasi status pesanan & nomor resi.',
-    'Halo, saya ingin mendaftar sebagai reseller / mitra UMKM.'
+    'Halo, saya mau konfirmasi pembayaran & nomor resi.',
+    'Halo, saya ingin menanyakan status pesanan saya.'
   ];
 
   const handleSend = (textToSend?: string) => {
     const text = encodeURIComponent(textToSend || message || 'Halo Borongin, saya ingin bertanya mengenai produk.');
-    const whatsappUrl = `https://wa.me/6281234567890?text=${text}`;
+    const whatsappUrl = `https://wa.me/${storeSettings.whatsappInternational || '6287722631751'}?text=${text}`;
     window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     setIsWhatsAppModalOpen(false);
   };

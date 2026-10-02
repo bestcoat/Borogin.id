@@ -32,15 +32,15 @@ export const CheckoutView: React.FC = () => {
 
   // Form State
   const [formData, setFormData] = useState<OrderCustomerInfo>({
-    fullName: user.name || 'Budi Santoso',
-    phone: user.phone || '081298765432',
-    email: user.email || 'budi.santoso@example.com',
-    address: 'Jl. Merdeka No. 45, RT 02/RW 04',
-    province: 'DKI Jakarta',
-    city: 'Jakarta Selatan',
-    district: 'Kebayoran Baru',
-    subDistrict: 'Senayan',
-    postalCode: '12190',
+    fullName: user?.name || '',
+    phone: user?.phone || '',
+    email: user?.email || '',
+    address: user?.address?.address || 'Jl. Merdeka No. 45, RT 02/RW 04',
+    province: user?.address?.province || 'DKI Jakarta',
+    city: user?.address?.city || 'Jakarta Selatan',
+    district: user?.address?.district || 'Kebayoran Baru',
+    subDistrict: user?.address?.subDistrict || 'Senayan',
+    postalCode: user?.address?.postalCode || '12190',
     notes: ''
   });
 

@@ -31,7 +31,7 @@ export const OrderReviewForm: React.FC<OrderReviewFormProps> = ({ order, onSucce
   const [rating, setRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [courierRating, setCourierRating] = useState<number>(5);
-  const [reviewerName, setReviewerName] = useState<string>(order.customer.fullName || user.name || 'Pembeli Borongin');
+  const [reviewerName, setReviewerName] = useState<string>(order.customer.fullName || user?.name || 'Pembeli Borongin');
   const [comment, setComment] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [submittedProducts, setSubmittedProducts] = useState<string[]>(() => {

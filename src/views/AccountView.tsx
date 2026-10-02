@@ -44,9 +44,37 @@ export const AccountView: React.FC = () => {
   );
 
   // Edit profile state
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-  const [phone, setPhone] = useState(user.phone);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+
+  if (!user) {
+    return (
+      <div className="py-16 text-center max-w-md mx-auto space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+          <User className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-800">Silakan Masuk ke Akun Anda</h2>
+        <p className="text-xs text-slate-500">
+          Untuk melihat riwayat pesanan, status resi, poin reward, dan pengaturan alamat, silakan login terlebih dahulu.
+        </p>
+        <div className="flex justify-center gap-3 pt-2">
+          <button
+            onClick={() => setCurrentView('login')}
+            className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition-all"
+          >
+            Masuk ke Akun
+          </button>
+          <button
+            onClick={() => setCurrentView('register')}
+            className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-all"
+          >
+            Daftar Baru
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const favoritedProducts = products.filter(p => wishlist.includes(p.id));
 

@@ -78,7 +78,7 @@ export const ProductDetailView: React.FC = () => {
     const text = encodeURIComponent(
       `Halo Borongin.com, saya tertarik dengan produk:\n*${product.title}*\nHarga: ${formatRupiah(currentPrice)}\nSKU: ${selectedVariation?.sku || product.sku}\nApakah produk ini masih ready stock?`
     );
-    window.open(`https://wa.me/6281234567890?text=${text}`, '_blank');
+    window.open(`https://wa.me/6287722631751?text=${text}`, '_blank');
   };
 
   const handleShare = () => {
@@ -262,12 +262,16 @@ export const ProductDetailView: React.FC = () => {
               <div className="flex items-center gap-2 text-xs">
                 <span className="text-slate-500">Ketersediaan Stok:</span>
                 {isOutOfStock ? (
-                  <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
+                  <span className="font-extrabold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200">
                     Stok Habis
                   </span>
+                ) : currentStock <= 5 ? (
+                  <span className="font-extrabold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
+                    ⚠️ Stok Hampir Habis (Sisa {currentStock} unit)
+                  </span>
                 ) : (
-                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                    Tersedia ({currentStock} unit)
+                  <span className="font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                    Stok Tersedia ({currentStock} unit)
                   </span>
                 )}
               </div>

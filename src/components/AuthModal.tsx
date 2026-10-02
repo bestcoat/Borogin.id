@@ -5,9 +5,9 @@ import { useShop } from '../context/ShopContext';
 export const AuthModal: React.FC = () => {
   const { isAuthModalOpen, setIsAuthModalOpen, user, updateUserProfile, showToast } = useShop();
   const [isRegister, setIsRegister] = useState(false);
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-  const [phone, setPhone] = useState(user.phone);
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [phone, setPhone] = useState(user?.phone || '');
   const [password, setPassword] = useState('');
 
   if (!isAuthModalOpen) return null;

@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React from 'react';
 import { ShopProvider, useShop } from './context/ShopContext';
 import { Header } from './components/Header';
@@ -10,7 +5,7 @@ import { Footer } from './components/Footer';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { WhatsAppFloating } from './components/WhatsAppFloating';
 import { AuthModal } from './components/AuthModal';
-import { WordPressBlueprintModal } from './views/WordPressBlueprintModal';
+import { GuestLoginPromptModal } from './components/GuestLoginPromptModal';
 import { NewUserModal } from './components/NewUserModal';
 import { CookieNotice } from './components/CookieNotice';
 import { ToastContainer } from './components/ToastContainer';
@@ -27,9 +22,13 @@ import { PromoView } from './views/PromoView';
 import { BlogView } from './views/BlogView';
 import { StaticPagesView } from './views/StaticPagesView';
 import { AdminDashboardView } from './views/AdminDashboardView';
+import { AdminLoginView } from './views/AdminLoginView';
+import { LoginView } from './views/LoginView';
+import { RegisterView } from './views/RegisterView';
+import { InvoiceView } from './views/InvoiceView';
 
 const AppContent: React.FC = () => {
-  const { currentView } = useShop();
+  const { currentView, authRole } = useShop();
 
   const renderCurrentView = () => {
     switch (currentView) {
@@ -55,8 +54,16 @@ const AppContent: React.FC = () => {
         return <PromoView />;
       case 'blog':
         return <BlogView />;
+      case 'login':
+        return <LoginView />;
+      case 'register':
+        return <RegisterView />;
+      case 'invoice':
+        return <InvoiceView />;
+      case 'admin-login':
+        return <AdminLoginView />;
       case 'admin':
-        return <AdminDashboardView />;
+        return authRole === 'ADMIN' ? <AdminDashboardView /> : <AdminLoginView />;
       case 'about':
         return <StaticPagesView pageType="about" />;
       case 'contact':
@@ -94,8 +101,8 @@ const AppContent: React.FC = () => {
       <WhatsAppFloating />
 
       {/* Modals & Overlays */}
+      <GuestLoginPromptModal />
       <AuthModal />
-      <WordPressBlueprintModal />
       <NewUserModal />
       <CookieNotice />
       <ToastContainer />

@@ -7,16 +7,18 @@ import {
   Order, 
   ShippingRate, 
   UserProfile, 
-  OrderStatus,
-  Review 
+  OrderStatus, 
+  Review, 
+  PaymentProof, 
+  StoreSettings 
 } from '../types';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_CATEGORIES, 
   INITIAL_COUPONS, 
-  INITIAL_USER,
   INITIAL_SHIPPING_RATES 
 } from '../data/mockData';
+import { OFFICIAL_WA_NUMBER_DISPLAY, OFFICIAL_WA_NUMBER_INTL } from '../services/whatsappService';
 
 export type AppView = 
   | 'home'
@@ -34,8 +36,11 @@ export type AppView =
   | 'product-detail'
   | 'account'
   | 'tracking'
+  | 'invoice'
+  | 'login'
+  | 'register'
   | 'admin'
-  | 'wordpress-blueprint'
+  | 'admin-login'
   | 'faq'
   | 'terms'
   | 'privacy'
@@ -47,6 +52,13 @@ export interface ToastMessage {
   message: string;
 }
 
+export interface PendingBuyAction {
+  productId: string;
+  variationId?: string;
+  quantity: number;
+  action: 'cart' | 'buy';
+}
+
 interface ShopContextType {
   currentView: AppView;
   setCurrentView: (view: AppView) => void;
@@ -54,13 +66,39 @@ interface ShopContextType {
   setSelectedProductId: (id: string | null) => void;
   selectedBlogId: string | null;
   setSelectedBlogId: (id: string | null) => void;
+  
+  // Auth State & Role
+  authRole: 'GUEST' | 'CUSTOMER' | 'ADMIN';
+  isAuthenticated: boolean;
+  user: UserProfile | null;
+  refreshAuth: () => Promise<void>;
+  customerLogout: () => Promise<void>;
+  adminLogout: () => Promise<void>;
+
+  // Guest Interceptor Prompt
+  isGuestPromptOpen: boolean;
+  setIsGuestPromptOpen: (open: boolean) => void;
+  pendingBuyAction: PendingBuyAction | null;
+  setPendingBuyAction: (action: PendingBuyAction | null) => void;
+
+  // Catalog & Inventory
   products: Product[];
   categories: typeof INITIAL_CATEGORIES;
   coupons: Coupon[];
-  
+  fetchProducts: () => Promise<void>;
+  updateProductStock: (productId: string, newStock: number) => Promise<void>;
+  addNewProduct: (product: Omit<Product, 'id' | 'createdAt'>) => Promise<void>;
+  updateProduct: (productId: string, updatedData: Partial<Product>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+
+  // Store Settings (BCA, QRIS, WhatsApp)
+  storeSettings: StoreSettings;
+  updateStoreSettings: (settings: Partial<StoreSettings>) => Promise<void>;
+
   // Cart
   cart: CartItem[];
   addToCart: (product: Product, variation?: ProductVariation, quantity?: number) => void;
+  buyNow: (product: Product, variation?: ProductVariation, quantity?: number) => void;
   removeFromCart: (cartItemId: string) => void;
   updateCartQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -72,55 +110,49 @@ interface ShopContextType {
   toggleWishlist: (productId: string) => void;
   isInWishlist: (productId: string) => boolean;
 
-  // Coupon & Discounts
+  // Coupons
   appliedCoupon: Coupon | null;
   applyCoupon: (code: string) => { success: boolean; message: string };
   removeCoupon: () => void;
   calculateDiscount: (subtotal: number) => number;
 
-  // Checkout & Shipping
+  // Checkout & Orders
   selectedShipping: ShippingRate;
   setSelectedShipping: (shipping: ShippingRate) => void;
   shippingRates: ShippingRate[];
   orders: Order[];
-  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'timeline'>) => Order;
   activeOrder: Order | null;
   setActiveOrder: (order: Order | null) => void;
-  updateOrderStatus: (orderId: string, status: OrderStatus, trackingNumber?: string) => void;
-  simulatePaymentWebhook: (orderId: string) => void;
-
-  // Customer Profile & Points
-  user: UserProfile;
-  updateUserProfile: (data: Partial<UserProfile>) => void;
-  redeemPoints: (pointsCost: number, voucherValue: number) => boolean;
-
-  // Search & Filtering
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-  categoryFilter: string;
-  setCategoryFilter: (categorySlug: string) => void;
+  createOrder: (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'timeline'>) => Promise<Order | null>;
+  submitPaymentProof: (orderNumber: string, proof: PaymentProof) => Promise<boolean>;
+  confirmPayment: (orderId: string) => Promise<void>;
+  rejectPayment: (orderId: string, reason?: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: OrderStatus, trackingNumber?: string) => Promise<void>;
 
   // Reviews
   addProductReview: (productId: string, review: Omit<Review, 'id' | 'date'>) => void;
 
-  // Admin stock / Inventory
-  updateProductStock: (productId: string, newStock: number) => void;
-  addNewProduct: (product: Omit<Product, 'id' | 'createdAt'>) => void;
-  updateProduct: (productId: string, updatedData: Partial<Product>) => void;
-
-  // Toasts & Modals
+  // UI Toasts & Helpers
   toasts: ToastMessage[];
   showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
   removeToast: (id: string) => void;
+  formatRupiah: (amount: number) => string;
+
+  // Backward compatibility aliases
+  isAdminAuthenticated: boolean;
+  setIsAdminAuthenticated: (auth: boolean) => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  isBlueprintModalOpen: boolean;
-  setIsBlueprintModalOpen: (open: boolean) => void;
+  updateUserProfile: (data: Partial<UserProfile>) => void;
+  redeemPoints: (pointsCost: number, voucherValue: number) => boolean;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  categoryFilter: string;
+  setCategoryFilter: (cat: string) => void;
   isWhatsAppModalOpen: boolean;
   setIsWhatsAppModalOpen: (open: boolean) => void;
   whatsAppInitialMessage: string;
   setWhatsAppInitialMessage: (msg: string) => void;
-  formatRupiah: (amount: number) => string;
 }
 
 const ShopContext = createContext<ShopContextType | undefined>(undefined);
@@ -130,32 +162,44 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedProductId, setSelectedProductId] = useState<string | null>('p-1');
   const [selectedBlogId, setSelectedBlogId] = useState<string | null>(null);
 
-  // Products state with localStorage persistence
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('borongin_products');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_PRODUCTS;
-      }
-    }
-    return INITIAL_PRODUCTS;
-  });
+  // Auth state
+  const [authRole, setAuthRole] = useState<'GUEST' | 'CUSTOMER' | 'ADMIN'>('GUEST');
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem('borongin_products', JSON.stringify(products));
-  }, [products]);
+  // WhatsApp Floating Modal State
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [whatsAppInitialMessage, setWhatsAppInitialMessage] = useState('Halo Borongin, saya ingin bertanya mengenai produk.');
 
-  // Cart state with localStorage persistence
+  // Guest Interceptor state
+  const [isGuestPromptOpen, setIsGuestPromptOpen] = useState(false);
+  const [pendingBuyAction, setPendingBuyAction] = useState<PendingBuyAction | null>(null);
+
+  // Store Settings
+  const DEFAULT_STORE_SETTINGS: StoreSettings = {
+    bcaBank: 'BCA',
+    bcaAccountNumber: '11254666447',
+    bcaAccountHolder: 'Borongin',
+    qrisImage: 'https://images.unsplash.com/photo-1595079672139-545c02557142?auto=format&fit=crop&w=600&q=80',
+    whatsappNumber: OFFICIAL_WA_NUMBER_DISPLAY,
+    whatsappInternational: OFFICIAL_WA_NUMBER_INTL,
+    isCodEnabled: true,
+    freeShippingMin: 100000,
+    storeTagline: 'Belanja Mudah, Harga Bersahabat'
+  };
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_STORE_SETTINGS);
+
+  // Products
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+  const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+
+  // Cart
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem('borongin_cart');
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
+      try { return JSON.parse(saved); } catch { return []; }
     }
     return [];
   });
@@ -164,128 +208,30 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('borongin_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Wishlist state
+  // Wishlist
   const [wishlist, setWishlist] = useState<string[]>(() => {
     const saved = localStorage.getItem('borongin_wishlist');
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return ['p-1', 'p-4'];
-      }
+      try { return JSON.parse(saved); } catch { return ['p-1']; }
     }
-    return ['p-1', 'p-4'];
+    return ['p-1'];
   });
 
   useEffect(() => {
     localStorage.setItem('borongin_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
 
-  // Applied Coupon
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
-  const [coupons, setCoupons] = useState<Coupon[]>(INITIAL_COUPONS);
-
   // Shipping
   const [shippingRates] = useState<ShippingRate[]>(INITIAL_SHIPPING_RATES);
   const [selectedShipping, setSelectedShipping] = useState<ShippingRate>(INITIAL_SHIPPING_RATES[0]);
 
   // Orders
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('borongin_orders');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return [];
-      }
-    }
-    // Initial mock order for realistic experience
-    const initialOrder: Order = {
-      id: 'ord-initial',
-      orderNumber: 'BRG-20260927-00108',
-      customer: {
-        fullName: 'Budi Santoso',
-        phone: '081298765432',
-        email: 'budi.santoso@example.com',
-        address: 'Jl. Merdeka No. 45, RT 02/RW 04',
-        province: 'DKI Jakarta',
-        city: 'Jakarta Selatan',
-        district: 'Kebayoran Baru',
-        subDistrict: 'Senayan',
-        postalCode: '12190',
-        notes: 'Tolong titip di pos satpam bila tidak ada orang.'
-      },
-      items: [
-        {
-          id: 'item-init-1',
-          productId: 'p-1',
-          product: INITIAL_PRODUCTS[0],
-          selectedVariation: INITIAL_PRODUCTS[0].variations?.[0],
-          quantity: 1
-        }
-      ],
-      subtotal: 349000,
-      discount: 34900,
-      shippingCost: 14000,
-      shippingCourier: INITIAL_SHIPPING_RATES[0],
-      total: 328100,
-      paymentMethod: 'bca_va',
-      paymentMethodName: 'BCA Virtual Account',
-      paymentStatus: 'paid',
-      status: 'shipped',
-      trackingNumber: 'JT98273641029ID',
-      createdAt: '2026-09-26 14:20:00',
-      paidAt: '2026-09-26 14:25:12',
-      shippedAt: '2026-09-27 09:15:00',
-      virtualAccountNumber: '8271081298765432',
-      timeline: [
-        {
-          status: 'pending_payment',
-          title: 'Pesanan Dibuat',
-          description: 'Menunggu konfirmasi pembayaran via BCA Virtual Account.',
-          timestamp: '26 Sep 2026, 14:20'
-        },
-        {
-          status: 'processing',
-          title: 'Pembayaran Terverifikasi',
-          description: 'Payment gateway Midtrans mendeteksi pembayaran sukses.',
-          timestamp: '26 Sep 2026, 14:25'
-        },
-        {
-          status: 'packed',
-          title: 'Pesanan Dikemas',
-          description: 'Pesanan dipacking dengan bubble wrap tebal di Warehouse Jakarta.',
-          timestamp: '26 Sep 2026, 18:30'
-        },
-        {
-          status: 'shipped',
-          title: 'Pesanan Dikirim oleh J&T Express',
-          description: 'Paket telah diserahkan ke kurir J&T dengan No. Resi JT98273641029ID.',
-          timestamp: '27 Sep 2026, 09:15'
-        }
-      ]
-    };
-    return [initialOrder];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('borongin_orders', JSON.stringify(orders));
-  }, [orders]);
-
-  const [activeOrder, setActiveOrder] = useState<Order | null>(orders[0] || null);
-
-  // User
-  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [activeOrder, setActiveOrder] = useState<Order | null>(null);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-
-  // Modals
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
-  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
-  const [whatsAppInitialMessage, setWhatsAppInitialMessage] = useState('Halo Borongin.com, saya ingin bertanya tentang ketersediaan produk.');
 
   // Toasts
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -302,15 +248,135 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Helper formatting
   const formatRupiah = (num: number) => {
-    return 'Rp' + num.toLocaleString('id-ID');
+    return 'Rp' + Math.max(0, num).toLocaleString('id-ID');
   };
 
-  // Cart operations
+  // Fetch session on load
+  const refreshAuth = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          setAuthRole(data.role);
+          setUser({
+            ...data.user,
+            role: data.role
+          });
+        } else {
+          setAuthRole('GUEST');
+          setUser(null);
+        }
+      }
+    } catch (e) {
+      // Fallback
+    }
+  };
+
+  // Load products from server
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('/api/products?status=all');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.products && Array.isArray(data.products) && data.products.length > 0) {
+          setProducts(data.products);
+        }
+      }
+    } catch (e) {}
+  };
+
+  // Load store settings from server
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          setStoreSettings(data.settings);
+        }
+      }
+    } catch (e) {}
+  };
+
+  // Load orders from server
+  const fetchOrders = async () => {
+    try {
+      if (authRole === 'ADMIN') {
+        const res = await fetch('/api/orders/admin/all');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.orders) {
+            setOrders(data.orders);
+            if (!activeOrder && data.orders.length > 0) {
+              setActiveOrder(data.orders[0]);
+            }
+          }
+        }
+      } else if (authRole === 'CUSTOMER') {
+        const res = await fetch('/api/orders/my');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.orders) {
+            setOrders(data.orders);
+            if (!activeOrder && data.orders.length > 0) {
+              setActiveOrder(data.orders[0]);
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    refreshAuth();
+    fetchProducts();
+    fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [authRole]);
+
+  // Customer Logout
+  const customerLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
+    setAuthRole('GUEST');
+    setUser(null);
+    showToast('Anda telah berhasil keluar dari akun.', 'info');
+    setCurrentView('home');
+  };
+
+  // Admin Logout
+  const adminLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {}
+    setAuthRole('GUEST');
+    setUser(null);
+    showToast('Logout dari Portal Administrator berhasil.', 'info');
+    setCurrentView('home');
+  };
+
+  // Cart operations with Guest Interception
   const addToCart = (product: Product, variation?: ProductVariation, quantity: number = 1) => {
     if (product.stock <= 0) {
-      showToast(`Maaf, produk ${product.title} sedang habis.`, 'warning');
+      showToast(`Maaf, produk "${product.title}" sedang habis.`, 'warning');
+      return;
+    }
+
+    // Intercept Guest: Must login / register before adding to cart
+    if (authRole === 'GUEST' || !user) {
+      setPendingBuyAction({
+        productId: product.id,
+        variationId: variation?.id,
+        quantity,
+        action: 'cart'
+      });
+      setIsGuestPromptOpen(true);
       return;
     }
 
@@ -341,6 +407,28 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ]);
     }
     showToast(`Berhasil menambahkan "${product.title}" ke keranjang!`, 'success');
+  };
+
+  const buyNow = (product: Product, variation?: ProductVariation, quantity: number = 1) => {
+    if (product.stock <= 0) {
+      showToast(`Maaf, produk "${product.title}" sedang habis.`, 'warning');
+      return;
+    }
+
+    // Intercept Guest: Must login / register before proceeding to checkout
+    if (authRole === 'GUEST' || !user) {
+      setPendingBuyAction({
+        productId: product.id,
+        variationId: variation?.id,
+        quantity,
+        action: 'buy'
+      });
+      setIsGuestPromptOpen(true);
+      return;
+    }
+
+    addToCart(product, variation, quantity);
+    setCurrentView('checkout');
   };
 
   const removeFromCart = (cartItemId: string) => {
@@ -391,7 +479,7 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isInWishlist = (productId: string) => wishlist.includes(productId);
 
-  // Coupon calculations
+  // Coupons
   const calculateDiscount = (subtotal: number): number => {
     if (!appliedCoupon) return 0;
     if (subtotal < appliedCoupon.minSpend) return 0;
@@ -431,152 +519,240 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Kupon promo dibatalkan.', 'info');
   };
 
-  // Orders
-  const createOrder = (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'timeline'>): Order => {
-    const today = new Date();
-    const dateStr = today.toISOString().slice(0, 10).replace(/-/g, '');
-    const randomSeq = Math.floor(1000 + Math.random() * 9000);
-    const orderNumber = `BRG-${dateStr}-${randomSeq}`;
+  // Orders creation on server
+  const createOrder = async (orderData: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'timeline'>): Promise<Order | null> => {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(orderData)
+      });
+      const data = await res.json();
 
-    const newOrder: Order = {
-      ...orderData,
-      id: `ord-${Date.now()}`,
-      orderNumber,
-      createdAt: new Date().toLocaleString('id-ID'),
-      timeline: [
-        {
-          status: 'pending_payment',
-          title: 'Pesanan Menunggu Pembayaran',
-          description: `Silakan lakukan pembayaran sesuai instruksi ${orderData.paymentMethodName}.`,
-          timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-        }
-      ]
-    };
+      if (!res.ok || !data.success) {
+        showToast(data.message || 'Gagal memproses pesanan.', 'error');
+        return null;
+      }
 
-    setOrders((prev) => [newOrder, ...prev]);
-    setActiveOrder(newOrder);
-
-    // Update inventory stock for purchased products
-    setProducts((prev) =>
-      prev.map((prod) => {
-        const purchasedItem = orderData.items.find((item) => item.productId === prod.id);
-        if (purchasedItem) {
-          const newStock = Math.max(0, prod.stock - purchasedItem.quantity);
-          const newSold = prod.soldCount + purchasedItem.quantity;
-          return {
-            ...prod,
-            stock: newStock,
-            soldCount: newSold
-          };
-        }
-        return prod;
-      })
-    );
-
-    // Award loyalty points (1 point per Rp10.000 spent)
-    const earnedPoints = Math.floor(orderData.total / 10000);
-    if (earnedPoints > 0) {
-      setUser((prev) => ({
-        ...prev,
-        points: prev.points + earnedPoints
-      }));
+      const created: Order = data.order;
+      setOrders((prev) => [created, ...prev]);
+      setActiveOrder(created);
+      clearCart();
+      setAppliedCoupon(null);
+      fetchProducts(); // Refresh stock counts from server
+      return created;
+    } catch (e) {
+      showToast('Terjadi kendala jaringan saat membuat pesanan.', 'error');
+      return null;
     }
-
-    clearCart();
-    setAppliedCoupon(null);
-    return newOrder;
   };
 
-  const updateOrderStatus = (orderId: string, status: OrderStatus, trackingNumber?: string) => {
-    setOrders((prev) =>
-      prev.map((ord) => {
-        if (ord.id === orderId) {
-          const nowStr = new Date().toLocaleString('id-ID');
-          const statusLabels: Record<OrderStatus, { title: string; desc: string }> = {
-            pending_payment: { title: 'Menunggu Pembayaran', desc: 'Menunggu konfirmasi payment gateway.' },
-            processing: { title: 'Pembayaran Dikonfirmasi', desc: 'Pesanan sedang diproses admin gudang.' },
-            packed: { title: 'Pesanan Dikemas', desc: 'Barang telah dipacking rapi siap di-pickup ekspedisi.' },
-            shipped: { title: 'Pesanan Dikirim', desc: `Paket diserahkan ke ${ord.shippingCourier.courier} (Resi: ${trackingNumber || ord.trackingNumber || 'JP-TRK-9901'})` },
-            completed: { title: 'Pesanan Selesai', desc: 'Paket telah diterima dengan baik oleh pembeli.' },
-            cancelled: { title: 'Pesanan Dibatalkan', desc: 'Pesanan dibatalkan sesuai permintaan/kadaluarsa.' },
-            refunded: { title: 'Dana Dikembalikan', desc: 'Dana telah direfund ke rekening pelanggan.' }
-          };
+  // Submit Payment Proof to server
+  const submitPaymentProof = async (orderNumber: string, proof: PaymentProof): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/orders/${orderNumber}/proof`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proof)
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showToast(data.message || 'Gagal mengunggah bukti pembayaran.', 'error');
+        return false;
+      }
 
-          const newTimelineItem = {
-            status,
-            title: statusLabels[status].title,
-            description: statusLabels[status].desc,
-            timestamp: nowStr
-          };
-
-          return {
-            ...ord,
-            status,
-            trackingNumber: trackingNumber || ord.trackingNumber,
-            paidAt: status === 'processing' || status === 'completed' ? ord.paidAt || nowStr : ord.paidAt,
-            shippedAt: status === 'shipped' ? nowStr : ord.shippedAt,
-            completedAt: status === 'completed' ? nowStr : ord.completedAt,
-            paymentStatus: status === 'cancelled' || status === 'refunded' ? ord.paymentStatus : 'paid',
-            timeline: [...ord.timeline, newTimelineItem]
-          };
-        }
-        return ord;
-      })
-    );
-
-    showToast(`Status pesanan berhasil diperbarui ke: ${status.toUpperCase()}`, 'success');
-  };
-
-  // Simulate payment webhook from Midtrans / Xendit
-  const simulatePaymentWebhook = (orderId: string) => {
-    updateOrderStatus(orderId, 'processing');
-    showToast('Simulasi Webhook Midtrans: Pembayaran Berhasil Diterima!', 'success');
-  };
-
-  // User Profile
-  const updateUserProfile = (data: Partial<UserProfile>) => {
-    setUser((prev) => ({ ...prev, ...data }));
-    showToast('Profil pelanggan berhasil diperbarui!', 'success');
-  };
-
-  const redeemPoints = (pointsCost: number, voucherValue: number): boolean => {
-    if (user.points < pointsCost) {
-      showToast('Poin Anda tidak mencukupi untuk penukaran voucher ini.', 'warning');
+      const updated = data.order;
+      setOrders((prev) => prev.map((o) => (o.orderNumber === orderNumber ? updated : o)));
+      if (activeOrder && activeOrder.orderNumber === orderNumber) {
+        setActiveOrder(updated);
+      }
+      showToast('Bukti transfer berhasil dikirim! Status pesanan kini: Menunggu Verifikasi Pembayaran.', 'success');
+      return true;
+    } catch (e) {
+      showToast('Gagal mengirim bukti pembayaran ke server.', 'error');
       return false;
     }
-    const voucherCode = `POIN-${voucherValue / 1000}K-${Math.floor(100 + Math.random() * 900)}`;
-    const newCoupon: Coupon = {
-      code: voucherCode,
-      discountType: 'fixed',
-      value: voucherValue,
-      minSpend: voucherValue * 2,
-      description: `Voucher Poin Rp${voucherValue.toLocaleString('id-ID')} (Tukar ${pointsCost} Poin)`
-    };
-
-    setCoupons((prev) => [newCoupon, ...prev]);
-    setUser((prev) => ({ ...prev, points: prev.points - pointsCost }));
-    showToast(`Voucher ${voucherCode} berhasil dibuat dari penukaran poin!`, 'success');
-    return true;
   };
 
-  // Reviews
+  // Admin Confirm Payment
+  const confirmPayment = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/orders/admin/${orderId}/confirm-payment`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
+        if (activeOrder && activeOrder.id === orderId) {
+          setActiveOrder(data.order);
+        }
+        showToast(data.message, 'success');
+        fetchProducts();
+      } else {
+        showToast(data.message || 'Gagal mengonfirmasi pembayaran.', 'error');
+      }
+    } catch (e) {
+      showToast('Gagal memproses konfirmasi pembayaran.', 'error');
+    }
+  };
+
+  // Admin Reject Payment
+  const rejectPayment = async (orderId: string, reason?: string) => {
+    try {
+      const res = await fetch(`/api/orders/admin/${orderId}/reject-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
+        if (activeOrder && activeOrder.id === orderId) {
+          setActiveOrder(data.order);
+        }
+        showToast(data.message, 'warning');
+      } else {
+        showToast(data.message || 'Gagal menolak pembayaran.', 'error');
+      }
+    } catch (e) {
+      showToast('Gagal memproses penolakan pembayaran.', 'error');
+    }
+  };
+
+  // Admin Status Update / Shipping Resi
+  const updateOrderStatus = async (orderId: string, status: OrderStatus, trackingNumber?: string) => {
+    try {
+      if (trackingNumber) {
+        const res = await fetch(`/api/orders/admin/${orderId}/shipping`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ trackingNumber })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
+          showToast(data.message, 'success');
+          return;
+        }
+      }
+
+      const res = await fetch(`/api/orders/admin/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, trackingNumber })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? data.order : o)));
+        showToast(data.message, 'success');
+      }
+    } catch (e) {
+      showToast('Gagal memperbarui status order.', 'error');
+    }
+  };
+
+  // Products CRUD
+  const updateProductStock = async (productId: string, newStock: number) => {
+    try {
+      const res = await fetch(`/api/products/admin/${productId}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: newStock })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProducts((prev) => prev.map((p) => (p.id === productId ? data.product : p)));
+        showToast(data.message, 'success');
+      }
+    } catch (e) {
+      showToast('Gagal mengubah stok di server.', 'error');
+    }
+  };
+
+  const addNewProduct = async (productData: Omit<Product, 'id' | 'createdAt'>) => {
+    try {
+      const res = await fetch('/api/products/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProducts((prev) => [data.product, ...prev]);
+        showToast(data.message, 'success');
+      }
+    } catch (e) {
+      showToast('Gagal menambahkan produk baru ke server.', 'error');
+    }
+  };
+
+  const updateProduct = async (productId: string, updatedData: Partial<Product>) => {
+    try {
+      const res = await fetch(`/api/products/admin/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProducts((prev) => prev.map((p) => (p.id === productId ? data.product : p)));
+        showToast(data.message, 'success');
+      }
+    } catch (e) {
+      showToast('Gagal menyimpan perubahan produk.', 'error');
+    }
+  };
+
+  const deleteProduct = async (productId: string) => {
+    try {
+      const res = await fetch(`/api/products/admin/${productId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setProducts((prev) => prev.filter((p) => p.id !== productId));
+        showToast(data.message, 'info');
+      }
+    } catch (e) {
+      showToast('Gagal menghapus produk.', 'error');
+    }
+  };
+
+  // Store Settings update
+  const updateStoreSettings = async (settingsUpdates: Partial<StoreSettings>) => {
+    try {
+      const res = await fetch('/api/settings/admin', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settingsUpdates)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStoreSettings(data.settings);
+        showToast(data.message, 'success');
+      }
+    } catch (e) {
+      showToast('Gagal menyimpan pengaturan toko.', 'error');
+    }
+  };
+
+  // Add Product Review
   const addProductReview = (productId: string, review: Omit<Review, 'id' | 'date'>) => {
-    const newReview: Review = {
+    const newRev: Review = {
       ...review,
       id: `rev-${Date.now()}`,
       date: new Date().toISOString().slice(0, 10)
     };
-
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
-          const updatedReviews = [newReview, ...p.reviews];
-          const newAvgRating = parseFloat(
+          const updatedReviews = [newRev, ...p.reviews];
+          const newAvg = parseFloat(
             (updatedReviews.reduce((sum, r) => sum + r.rating, 0) / updatedReviews.length).toFixed(1)
           );
           return {
             ...p,
-            rating: newAvgRating,
+            rating: newAvg,
             reviewCount: updatedReviews.length,
             reviews: updatedReviews
           };
@@ -587,34 +763,39 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     showToast('Terima kasih! Ulasan produk Anda telah ditambahkan.', 'success');
   };
 
-  // Admin inventory
-  const updateProductStock = (productId: string, newStock: number) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === productId) {
-          return { ...p, stock: Math.max(0, newStock) };
-        }
-        return p;
-      })
-    );
-    showToast('Stok produk berhasil diperbarui!', 'success');
+  // Backward-compatibility helpers
+  const updateUserProfile = async (data: Partial<UserProfile>) => {
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const resData = await res.json();
+      if (res.ok && resData.user) {
+        setUser(resData.user);
+        showToast('Profil Anda berhasil diperbarui!', 'success');
+      }
+    } catch (e) {}
   };
 
-  const addNewProduct = (prodData: Omit<Product, 'id' | 'createdAt'>) => {
-    const newProduct: Product = {
-      ...prodData,
-      id: `p-${Date.now()}`,
-      createdAt: new Date().toISOString().slice(0, 10)
+  const redeemPoints = (pointsCost: number, voucherValue: number): boolean => {
+    if (!user || user.points < pointsCost) {
+      showToast('Poin Anda tidak mencukupi untuk penukaran kupon ini.', 'warning');
+      return false;
+    }
+    const voucherCode = `POIN-${voucherValue / 1000}K-${Math.floor(100 + Math.random() * 900)}`;
+    const newCoupon: Coupon = {
+      code: voucherCode,
+      discountType: 'fixed',
+      value: voucherValue,
+      minSpend: voucherValue * 2,
+      description: `Voucher Poin Rp${voucherValue.toLocaleString('id-ID')} (Tukar ${pointsCost} Poin)`
     };
-    setProducts((prev) => [newProduct, ...prev]);
-    showToast(`Produk baru "${prodData.title}" berhasil ditambahkan!`, 'success');
-  };
-
-  const updateProduct = (productId: string, updatedData: Partial<Product>) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === productId ? { ...p, ...updatedData } : p))
-    );
-    showToast('Data produk berhasil diperbarui!', 'success');
+    setCoupons((prev) => [newCoupon, ...prev]);
+    setUser((prev) => (prev ? { ...prev, points: prev.points - pointsCost } : null));
+    showToast(`Voucher ${voucherCode} berhasil dibuat dari penukaran poin!`, 'success');
+    return true;
   };
 
   return (
@@ -626,11 +807,29 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSelectedProductId,
         selectedBlogId,
         setSelectedBlogId,
+        authRole,
+        isAuthenticated: authRole !== 'GUEST',
+        user,
+        refreshAuth,
+        customerLogout,
+        adminLogout,
+        isGuestPromptOpen,
+        setIsGuestPromptOpen,
+        pendingBuyAction,
+        setPendingBuyAction,
         products,
-        categories: INITIAL_CATEGORIES,
+        categories,
         coupons,
+        fetchProducts,
+        updateProductStock,
+        addNewProduct,
+        updateProduct,
+        deleteProduct,
+        storeSettings,
+        updateStoreSettings,
         cart,
         addToCart,
+        buyNow,
         removeFromCart,
         updateCartQuantity,
         clearCart,
@@ -647,34 +846,32 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSelectedShipping,
         shippingRates,
         orders,
-        createOrder,
         activeOrder,
         setActiveOrder,
+        createOrder,
+        submitPaymentProof,
+        confirmPayment,
+        rejectPayment,
         updateOrderStatus,
-        simulatePaymentWebhook,
-        user,
+        addProductReview,
+        toasts,
+        showToast,
+        removeToast,
+        formatRupiah,
+        isAdminAuthenticated: authRole === 'ADMIN',
+        setIsAdminAuthenticated: (val: boolean) => setAuthRole(val ? 'ADMIN' : 'GUEST'),
+        isAuthModalOpen,
+        setIsAuthModalOpen,
         updateUserProfile,
         redeemPoints,
         searchQuery,
         setSearchQuery,
         categoryFilter,
         setCategoryFilter,
-        addProductReview,
-        updateProductStock,
-        addNewProduct,
-        updateProduct,
-        toasts,
-        showToast,
-        removeToast,
-        isAuthModalOpen,
-        setIsAuthModalOpen,
-        isBlueprintModalOpen,
-        setIsBlueprintModalOpen,
         isWhatsAppModalOpen,
         setIsWhatsAppModalOpen,
         whatsAppInitialMessage,
-        setWhatsAppInitialMessage,
-        formatRupiah
+        setWhatsAppInitialMessage
       }}
     >
       {children}

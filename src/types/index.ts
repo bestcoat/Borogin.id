@@ -43,6 +43,8 @@ export interface Product {
   description: string;
   specifications: Record<string, string>;
   weightGrams: number;
+  dimensions?: string; // Dimensi cm (P x L x T)
+  status?: 'published' | 'draft' | 'out_of_stock' | 'inactive';
   variations?: ProductVariation[];
   reviews: Review[];
   createdAt: string;
@@ -101,12 +103,37 @@ export type PaymentMethodType =
 
 export type OrderStatus =
   | 'pending_payment'
+  | 'payment_verification'
+  | 'paid'
   | 'processing'
   | 'packed'
   | 'shipped'
   | 'completed'
   | 'cancelled'
-  | 'refunded';
+  | 'refunded'
+  | 'payment_rejected';
+
+export interface PaymentProof {
+  senderName: string;
+  orderNumber: string;
+  transferAmount: number;
+  transferDate: string;
+  proofImage: string;
+  uploadedAt: string;
+  rejectionReason?: string;
+}
+
+export interface StoreSettings {
+  bcaBank: string;
+  bcaAccountNumber: string;
+  bcaAccountHolder: string;
+  qrisImage: string;
+  whatsappNumber: string; // 087722631751
+  whatsappInternational: string; // 6287722631751
+  isCodEnabled: boolean;
+  freeShippingMin: number;
+  storeTagline: string;
+}
 
 export interface OrderCustomerInfo {
   fullName: string;
@@ -142,6 +169,7 @@ export interface Order {
   completedAt?: string;
   virtualAccountNumber?: string;
   qrisPayload?: string;
+  paymentProof?: PaymentProof;
   timeline: {
     status: OrderStatus;
     title: string;
@@ -169,8 +197,17 @@ export interface UserProfile {
   name: string;
   email: string;
   phone: string;
+  role?: 'GUEST' | 'CUSTOMER' | 'ADMIN';
   memberTier: 'Bronze' | 'Silver' | 'Gold';
   points: number;
   avatar: string;
   joinedDate: string;
+  address?: {
+    province: string;
+    city: string;
+    district: string;
+    subDistrict: string;
+    address: string;
+    postalCode: string;
+  };
 }

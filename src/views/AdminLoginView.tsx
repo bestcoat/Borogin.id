@@ -21,7 +21,7 @@ import {
 export const AdminLoginView: React.FC = () => {
   const { setCurrentView, showToast, setIsAdminAuthenticated, refreshAuth } = useShop();
   
-  const [username, setUsername] = useState(OFFICIAL_ADMIN_USERNAME);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -128,22 +128,15 @@ export const AdminLoginView: React.FC = () => {
         {/* Content Body */}
         <div className="p-6 sm:p-8 space-y-6">
           
-          {isSetupMode ? (
+          {isSetupMode && (
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 text-xs text-amber-900 space-y-1">
               <div className="flex items-center gap-1.5 font-bold">
                 <KeyRound className="w-4 h-4 text-amber-600" />
-                <span>Inisialisasi Keamanan Pertama Kali</span>
+                <span>Inisialisasi Keamanan Akun Administrator</span>
               </div>
               <p className="text-amber-800">
-                Sesuai standar keamanan, password administrator tidak disimpan secara hardcoded. Silakan buat master password pertama untuk akun <strong>{OFFICIAL_ADMIN_USERNAME}</strong>.
+                Silakan buat master password administrator baru untuk mengamankan akses toko BORONGIN.COM.
               </p>
-            </div>
-          ) : (
-            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-xs">
-              <span className="text-slate-500">Username Resmi Admin:</span>
-              <span className="font-mono font-black text-slate-800 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                {OFFICIAL_ADMIN_USERNAME}
-              </span>
             </div>
           )}
 
@@ -159,7 +152,7 @@ export const AdminLoginView: React.FC = () => {
             {/* Username Input */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Username Administrator:
+                Username / Email Administrator:
               </label>
               <div className="relative">
                 <input
@@ -167,7 +160,7 @@ export const AdminLoginView: React.FC = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
-                  placeholder="boronginadm"
+                  placeholder="Username atau email administrator..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white"
                 />
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

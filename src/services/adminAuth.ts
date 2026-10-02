@@ -69,7 +69,7 @@ export async function verifyAdminLogin(username: string, password: string): Prom
     }
     return { 
       success: false, 
-      message: 'Password administrator salah. Gunakan password default: Borongin2026!Admin atau inisialisasi password baru.' 
+      message: 'Username atau password administrator salah.' 
     };
   }
 

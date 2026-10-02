@@ -7,6 +7,7 @@ import authRoutes from './src/server/routes/authRoutes';
 import productRoutes from './src/server/routes/productRoutes';
 import orderRoutes from './src/server/routes/orderRoutes';
 import settingsRoutes from './src/server/routes/settingsRoutes';
+import blogRoutes from './src/server/routes/blogRoutes';
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ async function startServer() {
   app.use('/api/products', productRoutes);
   app.use('/api/orders', orderRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/blog', blogRoutes);
 
   // Vite middleware in dev or static files in production
   if (!isProd) {

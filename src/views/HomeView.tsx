@@ -7,10 +7,9 @@ import { FlashSaleSection } from '../components/FlashSaleSection';
 import { ProductCard } from '../components/ProductCard';
 import { TrustBadges } from '../components/TrustBadges';
 import { NewsletterSection } from '../components/NewsletterSection';
-import { INITIAL_BLOG_POSTS } from '../data/mockData';
 
 export const HomeView: React.FC = () => {
-  const { products, setCurrentView, setSelectedBlogId, setCategoryFilter } = useShop();
+  const { products, blogPosts, setCurrentView, setSelectedBlogId, setCategoryFilter } = useShop();
 
   const bestSellers = products.filter(p => p.isBestSeller).slice(0, 5);
   const newArrivals = products.filter(p => p.isNewArrival || p.isFeatured).slice(0, 5);
@@ -143,7 +142,7 @@ export const HomeView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {INITIAL_BLOG_POSTS.map((post) => (
+          {blogPosts.slice(0, 3).map((post) => (
             <div
               key={post.id}
               onClick={() => {

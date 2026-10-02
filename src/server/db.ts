@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { Product, Category, Coupon, StoreSettings, Order, UserProfile, OrderStatus } from '../types';
-import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_COUPONS } from '../data/mockData';
+import { Product, Category, Coupon, StoreSettings, Order, UserProfile, OrderStatus, BlogPost } from '../types';
+import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_COUPONS, INITIAL_BLOG_POSTS } from '../data/mockData';
 
 export interface UserRecord {
   id: string;
@@ -46,6 +46,7 @@ export interface DatabaseSchema {
   orders: Order[];
   carts: CartRecord[];
   settings: StoreSettings;
+  blogPosts: BlogPost[];
 }
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
@@ -212,7 +213,8 @@ function createDefaultDatabase(): DatabaseSchema {
     coupons: INITIAL_COUPONS,
     orders: [sampleOrder],
     carts: [],
-    settings: defaultSettings
+    settings: defaultSettings,
+    blogPosts: [...INITIAL_BLOG_POSTS]
   };
 }
 
@@ -228,6 +230,10 @@ class Database {
       if (fs.existsSync(DB_FILE)) {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
+        if (!parsed.blogPosts || !Array.isArray(parsed.blogPosts)) {
+          parsed.blogPosts = [...INITIAL_BLOG_POSTS];
+          this.saveImmediate(parsed);
+        }
         return parsed;
       }
     } catch (e) {
@@ -454,6 +460,46 @@ class Database {
   public clearCart(userId: string): void {
     this.data.carts = this.data.carts.filter(c => c.userId !== userId);
     this.save();
+  }
+
+  // Blog Posts
+  public getBlogPosts(): BlogPost[] {
+    return this.data.blogPosts || [];
+  }
+
+  public getBlogPostById(id: string): BlogPost | undefined {
+    return (this.data.blogPosts || []).find(b => b.id === id || b.slug === id);
+  }
+
+  public addBlogPost(post: BlogPost): BlogPost {
+    if (!this.data.blogPosts) {
+      this.data.blogPosts = [];
+    }
+    this.data.blogPosts.unshift(post);
+    this.save();
+    return post;
+  }
+
+  public updateBlogPost(id: string, updates: Partial<BlogPost>): BlogPost | undefined {
+    if (!this.data.blogPosts) return undefined;
+    const idx = this.data.blogPosts.findIndex(b => b.id === id);
+    if (idx !== -1) {
+      this.data.blogPosts[idx] = { ...this.data.blogPosts[idx], ...updates };
+      this.save();
+      return this.data.blogPosts[idx];
+    }
+    return undefined;
+  }
+
+  public deleteBlogPost(id: string): boolean {
+    if (!this.data.blogPosts) return false;
+    const idx = this.data.blogPosts.findIndex(b => b.id === id);
+    if (idx !== -1) {
+      this.data.blogPosts.splice(idx, 1);
+      this.save();
+      return true;
+    }
+    return false;
   }
 }
 

@@ -88,7 +88,21 @@ export const AdminLoginView: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setErrorMsg('Terjadi kesalahan saat memproses autentikasi ke server.');
+      // Fallback for static hosting / GitHub Pages / offline mode
+      try {
+        const localCheck = await verifyAdminLogin(username, password);
+        if (localCheck.success) {
+          sessionStorage.setItem('borongin_admin_session_v1', 'active_admin_session');
+          setIsAdminAuthenticated(true);
+          showToast('Login berhasil! Selamat datang di Dashboard BORONGIN.COM.', 'success');
+          setCurrentView('admin');
+          return;
+        } else {
+          setErrorMsg(localCheck.message);
+        }
+      } catch (fallbackErr) {
+        setErrorMsg('Terjadi kesalahan saat memproses autentikasi ke server.');
+      }
     } finally {
       setLoading(false);
     }

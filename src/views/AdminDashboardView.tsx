@@ -45,10 +45,11 @@ import {
   LogOut,
   QrCode,
   Tag,
-  Building2
+  Building2,
+  BookOpen
 } from 'lucide-react';
 import { useShop } from '../context/ShopContext';
-import { Product, OrderStatus, ProductVariation, PaymentProof } from '../types';
+import { Product, OrderStatus, ProductVariation, PaymentProof, BlogPost } from '../types';
 import { OFFICIAL_WA_NUMBER_DISPLAY, OFFICIAL_WA_NUMBER_INTL, generateWhatsAppAdminReportUrl } from '../services/whatsappService';
 import { changeMasterPassword, OFFICIAL_ADMIN_USERNAME } from '../services/adminAuth';
 
@@ -64,6 +65,7 @@ type AdminTab =
   | 'coupons'
   | 'promos'
   | 'reviews'
+  | 'blog'
   | 'reports'
   | 'settings';
 
@@ -84,7 +86,12 @@ export const AdminDashboardView: React.FC = () => {
     updateStoreSettings,
     adminLogout,
     setCurrentView, 
-    showToast 
+    showToast,
+    blogPosts,
+    addNewBlogPost,
+    updateBlogPost,
+    deleteBlogPost,
+    setSelectedBlogId
   } = useShop();
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
@@ -92,6 +99,23 @@ export const AdminDashboardView: React.FC = () => {
   const [productCategoryFilter, setProductCategoryFilter] = useState('all');
   const [stockStatusFilter, setStockStatusFilter] = useState<'all' | 'low' | 'out'>('all');
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>('all');
+
+  // Blog Management State
+  const [blogCategoryFilter, setBlogCategoryFilter] = useState('all');
+  const [blogSearchQuery, setBlogSearchQuery] = useState('');
+  const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
+  const [editingBlogId, setEditingBlogId] = useState<string | null>(null);
+
+  // Blog Form State
+  const [formBlogTitle, setFormBlogTitle] = useState('');
+  const [formBlogSlug, setFormBlogSlug] = useState('');
+  const [formBlogCategory, setFormBlogCategory] = useState('Tips Belanja');
+  const [formBlogAuthor, setFormBlogAuthor] = useState('Administrator BORONGIN');
+  const [formBlogReadTime, setFormBlogReadTime] = useState('3 Menit Baca');
+  const [formBlogImage, setFormBlogImage] = useState('https://images.unsplash.com/photo-1556742049-0a67e5572293?auto=format&fit=crop&w=800&q=80');
+  const [formBlogExcerpt, setFormBlogExcerpt] = useState('');
+  const [formBlogContent, setFormBlogContent] = useState('');
+  const [formBlogTags, setFormBlogTags] = useState('Tips, Hemat, Belanja');
 
   // Product Modal State (Add or Edit)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -369,6 +393,94 @@ export const AdminDashboardView: React.FC = () => {
     return true;
   });
 
+  // Filter blog posts
+  const filteredBlogPosts = blogPosts.filter(b => {
+    if (blogCategoryFilter !== 'all' && b.category.toLowerCase() !== blogCategoryFilter.toLowerCase()) {
+      return false;
+    }
+    if (blogSearchQuery.trim()) {
+      const q = blogSearchQuery.toLowerCase();
+      const matchTitle = b.title.toLowerCase().includes(q);
+      const matchExcerpt = b.excerpt.toLowerCase().includes(q);
+      const matchTag = b.tags.some(t => t.toLowerCase().includes(q));
+      if (!matchTitle && !matchExcerpt && !matchTag) return false;
+    }
+    return true;
+  });
+
+  const blogCategories = ['all', ...Array.from(new Set(blogPosts.map(p => p.category)))];
+
+  const handleOpenNewBlog = () => {
+    setEditingBlogId(null);
+    setFormBlogTitle('');
+    setFormBlogSlug('');
+    setFormBlogCategory('Tips Belanja');
+    setFormBlogAuthor('Administrator BORONGIN');
+    setFormBlogReadTime('3 Menit Baca');
+    setFormBlogImage('https://images.unsplash.com/photo-1556742049-0a67e5572293?auto=format&fit=crop&w=800&q=80');
+    setFormBlogExcerpt('');
+    setFormBlogContent('');
+    setFormBlogTags('Tips Belanja, Promo, Hemat');
+    setIsBlogModalOpen(true);
+  };
+
+  const handleEditBlog = (post: BlogPost) => {
+    setEditingBlogId(post.id);
+    setFormBlogTitle(post.title);
+    setFormBlogSlug(post.slug);
+    setFormBlogCategory(post.category);
+    setFormBlogAuthor(post.author);
+    setFormBlogReadTime(post.readTime);
+    setFormBlogImage(post.image);
+    setFormBlogExcerpt(post.excerpt);
+    setFormBlogContent(post.content);
+    setFormBlogTags(post.tags.join(', '));
+    setIsBlogModalOpen(true);
+  };
+
+  const handleSaveBlog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formBlogTitle.trim()) {
+      showToast('Judul artikel blog wajib diisi.', 'error');
+      return;
+    }
+    if (!formBlogContent.trim()) {
+      showToast('Konten lengkap artikel wajib diisi.', 'error');
+      return;
+    }
+
+    const tagsArray = formBlogTags
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    const postPayload = {
+      title: formBlogTitle.trim(),
+      slug: formBlogSlug.trim() || formBlogTitle.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-'),
+      excerpt: formBlogExcerpt.trim() || formBlogContent.trim().substring(0, 140) + '...',
+      content: formBlogContent.trim(),
+      category: formBlogCategory.trim() || 'Tips Belanja',
+      author: formBlogAuthor.trim() || 'Administrator BORONGIN',
+      readTime: formBlogReadTime.trim() || '3 Menit Baca',
+      image: formBlogImage.trim() || 'https://images.unsplash.com/photo-1556742049-0a67e5572293?auto=format&fit=crop&w=800&q=80',
+      tags: tagsArray.length > 0 ? tagsArray : ['Borongin']
+    };
+
+    if (editingBlogId) {
+      await updateBlogPost(editingBlogId, postPayload);
+    } else {
+      await addNewBlogPost(postPayload);
+    }
+
+    setIsBlogModalOpen(false);
+  };
+
+  const handleDeleteBlog = async (id: string, title: string) => {
+    if (window.confirm(`Yakin ingin menghapus artikel blog "${title}"?`)) {
+      await deleteBlogPost(id);
+    }
+  };
+
   // Sidebar navigation menu items
   const menuItems: { id: AdminTab; label: string; icon: React.ReactNode; badge?: number | string; badgeColor?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -382,6 +494,7 @@ export const AdminDashboardView: React.FC = () => {
     { id: 'coupons', label: 'Voucher', icon: <Ticket className="w-4 h-4" />, badge: coupons.length },
     { id: 'promos', label: 'Promo', icon: <Flame className="w-4 h-4" /> },
     { id: 'reviews', label: 'Review', icon: <Star className="w-4 h-4" /> },
+    { id: 'blog', label: 'Blog & Artikel', icon: <BookOpen className="w-4 h-4" />, badge: blogPosts.length },
     { id: 'reports', label: 'Laporan', icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'settings', label: 'Pengaturan', icon: <Settings className="w-4 h-4" /> }
   ];
@@ -574,6 +687,55 @@ export const AdminDashboardView: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Quick Admin Actions: Blog & Produk */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl border border-emerald-200/80 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-emerald-800 uppercase flex items-center gap-1.5">
+                      <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Blog & Edukasi Pelanggan</span>
+                    </span>
+                    <p className="text-xs text-slate-600">
+                      {blogPosts.length} artikel terbit · Menarik trafik pembeli & SEO
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleOpenNewBlog}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tulis</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('blog')}
+                      className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors"
+                    >
+                      Kelola
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200/80 flex items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-bold text-blue-800 uppercase flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Katalog Produk Toko</span>
+                    </span>
+                    <p className="text-xs text-slate-600">
+                      {products.length} SKU terdaftar di etalase toko
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleOpenAddProduct}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-sm transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Produk</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1264,6 +1426,171 @@ export const AdminDashboardView: React.FC = () => {
           )}
 
           {/* =========================================================
+              11b. TAB: BLOG & ARTIKEL (Manajemen Konten & Edukasi)
+             ========================================================= */}
+          {activeTab === 'blog' && (
+            <div className="space-y-6">
+              {/* Header Card */}
+              <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-emerald-600" />
+                      <span>Manajemen Blog &amp; Artikel Toko</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Tulis panduan belanja, tips hemat, info promo, dan artikel edukasi produk untuk meningkatkan penjualan
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentView('blog')}
+                      className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                      title="Buka halaman blog di etalase toko"
+                    >
+                      <ExternalLink className="w-4 h-4 text-slate-500" />
+                      <span>Lihat di Toko</span>
+                    </button>
+                    <button
+                      onClick={handleOpenNewBlog}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Tulis Artikel Baru</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Blog Metrics Bar */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase text-emerald-800">Total Artikel Diterbitkan</span>
+                    <p className="text-lg font-black text-emerald-950">{blogPosts.length} Konten</p>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200/80 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase text-blue-800">Kategori Topik</span>
+                    <p className="text-lg font-black text-blue-950">{blogCategories.length - 1} Kategori</p>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase text-amber-800">Status Pembaca</span>
+                    <p className="text-lg font-black text-amber-950">Publik (SEO Friendly)</p>
+                  </div>
+                </div>
+
+                {/* Filter & Search Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                    {blogCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setBlogCategoryFilter(cat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${
+                          blogCategoryFilter === cat
+                            ? 'bg-emerald-600 text-white shadow-sm'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {cat === 'all' ? 'Semua Kategori' : cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Cari judul atau tagar artikel..."
+                      value={blogSearchQuery}
+                      onChange={(e) => setBlogSearchQuery(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Blog Post List Table / Cards */}
+              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                {filteredBlogPosts.length === 0 ? (
+                  <div className="p-12 text-center space-y-3">
+                    <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-sm font-bold text-slate-700">Belum ada artikel yang cocok dengan filter</p>
+                    <button
+                      onClick={handleOpenNewBlog}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-emerald-700"
+                    >
+                      Tulis Artikel Pertama
+                    </button>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {filteredBlogPosts.map((post) => (
+                      <div key={post.id} className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <img
+                            src={post.image}
+                            alt={post.title}
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border border-slate-200 flex-shrink-0 bg-slate-100"
+                          />
+                          <div className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                {post.category}
+                              </span>
+                              <span className="text-[11px] text-slate-400">· {post.date}</span>
+                              <span className="text-[11px] text-slate-400">· {post.readTime}</span>
+                            </div>
+                            <h4 className="text-sm font-bold text-slate-900 hover:text-emerald-700 transition-colors">
+                              {post.title}
+                            </h4>
+                            <p className="text-xs text-slate-500 line-clamp-2 max-w-2xl leading-relaxed">
+                              {post.excerpt}
+                            </p>
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {post.tags.map((t) => (
+                                <span key={t} className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                  #{t}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+                          <button
+                            onClick={() => {
+                              setSelectedBlogId(post.id);
+                              setCurrentView('blog');
+                            }}
+                            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors"
+                            title="Buka artikel ini di website"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Lihat</span>
+                          </button>
+                          <button
+                            onClick={() => handleEditBlog(post)}
+                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBlog(post.id, post.title)}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================
               12. TAB: LAPORAN (Laporan Omzet & Penjualan)
              ========================================================= */}
           {activeTab === 'reports' && (
@@ -1883,6 +2210,255 @@ export const AdminDashboardView: React.FC = () => {
                 Tolak Pembayaran
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================
+          MODAL 4: FORM TULIS / EDIT ARTIKEL BLOG
+         ========================================================= */}
+      {isBlogModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto border border-slate-200">
+            
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-extrabold text-base text-slate-900">
+                  {editingBlogId ? 'Edit Artikel Blog' : 'Tulis Artikel Blog Baru'}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsBlogModalOpen(false)} 
+                className="p-1 text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Templates Buttons */}
+            {!editingBlogId && (
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200/80 space-y-2">
+                <span className="text-[11px] font-bold text-emerald-800 uppercase block">
+                  💡 Inspirasi Topik Cepat:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormBlogTitle('Panduan Praktis Belanja Aman dengan Bayar di Tempat (COD)');
+                      setFormBlogCategory('Tips Belanja');
+                      setFormBlogExcerpt('Simak langkah mudah berbelanja sistem COD di Borongin.com, tips memeriksa paket, dan memastikan barang sesuai sebelum kurir pergi.');
+                      setFormBlogContent(`Belanja online dengan metode Bayar di Tempat (COD) menjadi salah satu pilihan favorit pelanggan di BORONGIN.COM.
+
+Keuntungan Belanja COD:
+1. Tidak perlu repot transfer rekening bila belum memiliki m-banking.
+2. Keamanan maksimal bagi pembeli pemula.
+3. Transaksi langsung selesai saat kurir menyerahkan barang.
+
+Panduan Belanja COD Aman:
+- Pastikan nomor HP Anda selalu aktif saat kurir melakukan pengantaran.
+- Siapkan uang pas sesuai total tagihan pada nota/resi.
+- Buka paket dengan merekam video unboxing untuk klaim garansi retur jika ada kendala.`);
+                      setFormBlogTags('COD, Belanja Aman, Tips Kurir, Garansi');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-semibold border border-emerald-200 transition-colors shadow-2xs"
+                  >
+                    + Template Panduan COD
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormBlogTitle('5 Cara Merawat Perabotan Dapur Stainless & Keramik Agar Tetap Awet');
+                      setFormBlogCategory('Gaya Hidup & Dapur');
+                      setFormBlogExcerpt('Kumpulan tips merawat panci, wajan anti-lengket, dan pisau dapur agar tahan bertahun-tahun tanpa karat atau terkelupas.');
+                      setFormBlogContent(`Peralatan memasak berkualitas memerlukan perawatan yang tepat agar lapisannya tahan lama dan selalu higienis untuk keluarga.
+
+Tips Perawatan:
+1. Hindari mencuci wajan saat masih panas membara: Perubahan suhu drastis dapat merusak lapisan anti-lengket.
+2. Gunakan spons lembut dan hindari sabut kawat kasar.
+3. Keringkan sepenuhnya sebelum disimpan di lemari dapur.`);
+                      setFormBlogTags('Dapur, Tips Rumah Tangga, Masak Sehat');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-semibold border border-emerald-200 transition-colors shadow-2xs"
+                  >
+                    + Template Tips Dapur
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormBlogTitle('Kisah Pengrajin Lokal: Membawa Karya Anyaman Nusantara ke Panggung Nasional');
+                      setFormBlogCategory('UMKM');
+                      setFormBlogExcerpt('Mengenal dedikasi para perajin bambu dan rotan lokal dalam menghadirkan produk dekorasi rumah ramah lingkungan di Borongin.com.');
+                      setFormBlogContent(`Di balik setiap keranjang rotan dan dekorasi bambu di BORONGIN.COM, ada cerita tentang ketekunan tangan-tangan terampil para perajin di pedesaan Indonesia.
+
+Mari bersama dukung Gerakan Nasional Bangga Buatan Indonesia dengan membeli karya orisinal UMKM lokal.`);
+                      setFormBlogTags('UMKM, Produk Lokal, Kerajinan, Nusantara');
+                    }}
+                    className="px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-800 rounded-lg text-[11px] font-semibold border border-emerald-200 transition-colors shadow-2xs"
+                  >
+                    + Template Cerita UMKM
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBlog} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Judul Artikel */}
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">Judul Artikel Blog:</label>
+                  <input
+                    type="text"
+                    required
+                    value={formBlogTitle}
+                    onChange={(e) => setFormBlogTitle(e.target.value)}
+                    placeholder="Contoh: 10 Cara Cerdas Memilih Produk Rumah Tangga Hemat Energi"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
+                  />
+                </div>
+
+                {/* Kategori */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Kategori Artikel:</label>
+                  <input
+                    type="text"
+                    required
+                    value={formBlogCategory}
+                    onChange={(e) => setFormBlogCategory(e.target.value)}
+                    placeholder="Tips Belanja / UMKM / Dapur / Promo"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold"
+                  />
+                </div>
+
+                {/* Penulis */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nama Penulis / Editor:</label>
+                  <input
+                    type="text"
+                    required
+                    value={formBlogAuthor}
+                    onChange={(e) => setFormBlogAuthor(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                {/* Estimasi Waktu Baca */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Estimasi Waktu Baca:</label>
+                  <input
+                    type="text"
+                    value={formBlogReadTime}
+                    onChange={(e) => setFormBlogReadTime(e.target.value)}
+                    placeholder="Contoh: 3 Menit Baca"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                {/* Tagar / Tags */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tagar (Pisahkan dengan koma):</label>
+                  <input
+                    type="text"
+                    value={formBlogTags}
+                    onChange={(e) => setFormBlogTags(e.target.value)}
+                    placeholder="Tips, Hemat, Belanja, Borongin"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                {/* Gambar Sampul */}
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="block font-bold text-slate-700">URL Gambar Sampul / Banner:</label>
+                  <input
+                    type="text"
+                    required
+                    value={formBlogImage}
+                    onChange={(e) => setFormBlogImage(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
+                  />
+                  {formBlogImage && (
+                    <div className="aspect-video w-full max-h-36 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                      <img src={formBlogImage} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  {/* Preset Images */}
+                  <div className="flex flex-wrap gap-1.5 pt-1 text-[11px] text-slate-500">
+                    <span className="font-semibold">Preset Gambar:</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormBlogImage('https://images.unsplash.com/photo-1556742049-0a67e5572293?auto=format&fit=crop&w=800&q=80')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px]"
+                    >
+                      Belanja
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormBlogImage('https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=800&q=80')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px]"
+                    >
+                      UMKM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormBlogImage('https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=800&q=80')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px]"
+                    >
+                      Dapur & Masak
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormBlogImage('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80')}
+                      className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded-md text-[10px]"
+                    >
+                      Elektronik
+                    </button>
+                  </div>
+                </div>
+
+                {/* Ringkasan Singkat (Excerpt) */}
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">Ringkasan Singkat (Muncul di kartu cuplikan):</label>
+                  <textarea
+                    rows={2}
+                    value={formBlogExcerpt}
+                    onChange={(e) => setFormBlogExcerpt(e.target.value)}
+                    placeholder="Tulis 1-2 kalimat ringkasan menarik untuk menarik pembaca..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+
+                {/* Konten Lengkap */}
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-slate-700 mb-1">Isi Lengkap Artikel:</label>
+                  <textarea
+                    rows={8}
+                    required
+                    value={formBlogContent}
+                    onChange={(e) => setFormBlogContent(e.target.value)}
+                    placeholder="Tuliskan isi artikel Anda di sini..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsBlogModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition-colors flex items-center gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{editingBlogId ? 'Simpan Perubahan' : 'Terbitkan Artikel Blog'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

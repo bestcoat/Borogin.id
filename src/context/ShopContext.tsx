@@ -10,13 +10,15 @@ import {
   OrderStatus, 
   Review, 
   PaymentProof, 
-  StoreSettings 
+  StoreSettings,
+  BlogPost
 } from '../types';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_CATEGORIES, 
   INITIAL_COUPONS, 
-  INITIAL_SHIPPING_RATES 
+  INITIAL_SHIPPING_RATES,
+  INITIAL_BLOG_POSTS
 } from '../data/mockData';
 import { OFFICIAL_WA_NUMBER_DISPLAY, OFFICIAL_WA_NUMBER_INTL } from '../services/whatsappService';
 
@@ -138,6 +140,12 @@ interface ShopContextType {
   removeToast: (id: string) => void;
   formatRupiah: (amount: number) => string;
 
+  // Blog
+  blogPosts: BlogPost[];
+  addNewBlogPost: (post: Omit<BlogPost, 'id' | 'date'>) => Promise<BlogPost | null>;
+  updateBlogPost: (id: string, updates: Partial<BlogPost>) => Promise<boolean>;
+  deleteBlogPost: (id: string) => Promise<boolean>;
+
   // Backward compatibility aliases
   isAdminAuthenticated: boolean;
   setIsAdminAuthenticated: (auth: boolean) => void;
@@ -228,6 +236,22 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Orders
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
+
+  // Blog Posts
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>(() => {
+    const saved = localStorage.getItem('borongin_blog_posts');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_BLOG_POSTS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('borongin_blog_posts', JSON.stringify(blogPosts));
+  }, [blogPosts]);
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -329,10 +353,24 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) {}
   };
 
+  // Load blog posts from server
+  const fetchBlogPosts = async () => {
+    try {
+      const res = await fetch('/api/blog');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.posts && Array.isArray(data.posts) && data.posts.length > 0) {
+          setBlogPosts(data.posts);
+        }
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
     refreshAuth();
     fetchProducts();
     fetchSettings();
+    fetchBlogPosts();
   }, []);
 
   useEffect(() => {
@@ -736,6 +774,75 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Blog Operations
+  const addNewBlogPost = async (postData: Omit<BlogPost, 'id' | 'date'>): Promise<BlogPost | null> => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const newPost: BlogPost = {
+      ...postData,
+      id: `blog-${Date.now()}`,
+      date: todayStr
+    };
+
+    // Client-side optimistic update & persistence
+    setBlogPosts((prev) => [newPost, ...prev]);
+
+    // Backend sync
+    try {
+      const res = await fetch('/api/blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postData)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.post) {
+          setBlogPosts((prev) => prev.map((p) => (p.id === newPost.id ? data.post : p)));
+          showToast('Artikel blog berhasil diterbitkan!', 'success');
+          return data.post;
+        }
+      }
+    } catch (e) {}
+
+    showToast('Artikel blog berhasil diterbitkan!', 'success');
+    return newPost;
+  };
+
+  const updateBlogPost = async (id: string, updates: Partial<BlogPost>): Promise<boolean> => {
+    // Client-side update
+    setBlogPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+
+    // Backend sync
+    try {
+      const res = await fetch(`/api/blog/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.post) {
+          setBlogPosts((prev) => prev.map((p) => (p.id === id ? data.post : p)));
+        }
+      }
+    } catch (e) {}
+
+    showToast('Artikel blog berhasil diperbarui!', 'success');
+    return true;
+  };
+
+  const deleteBlogPost = async (id: string): Promise<boolean> => {
+    // Client-side delete
+    setBlogPosts((prev) => prev.filter((p) => p.id !== id));
+
+    // Backend sync
+    try {
+      await fetch(`/api/blog/${id}`, { method: 'DELETE' });
+    } catch (e) {}
+
+    showToast('Artikel blog berhasil dihapus.', 'info');
+    return true;
+  };
+
   // Add Product Review
   const addProductReview = (productId: string, review: Omit<Review, 'id' | 'date'>) => {
     const newRev: Review = {
@@ -858,6 +965,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         showToast,
         removeToast,
         formatRupiah,
+        blogPosts,
+        addNewBlogPost,
+        updateBlogPost,
+        deleteBlogPost,
         isAdminAuthenticated: authRole === 'ADMIN',
         setIsAdminAuthenticated: (val: boolean) => setAuthRole(val ? 'ADMIN' : 'GUEST'),
         isAuthModalOpen,
